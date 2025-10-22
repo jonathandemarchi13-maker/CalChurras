@@ -1,0 +1,1 @@
+console.debug('CalChurras client OK');

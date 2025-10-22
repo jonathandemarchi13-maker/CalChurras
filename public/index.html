@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<!-- PWA: theme, apple support, manifest & icons (added by assistant) -->
+<meta name="theme-color" content="#ff5a26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+<!-- End PWA tags -->
+
+<title>Calchurras — Calculadora de Churrasco</title>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Optional: enable extra Tailwind features -->
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          churras: {
+            50: '#fff7f3',
+            100: '#ffe9d9',
+            200: '#ffcfae',
+            300: '#ffb382',
+            400: '#ff8a46',
+            500: '#ff5a26',
+            600: '#e6451d',
+            700: '#b73716',
+            800: '#87270f',
+            900: '#5f1809'
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  /* small custom styles for subtle animations / icons sizing */
+  .toggle-pop { transform-origin: center; transition: transform .18s cubic-bezier(.2,.95,.2,1), box-shadow .18s; }
+  .toggle-pop:active { transform: scale(.97); }
+  .pulse-glow { transition: box-shadow .35s; }
+  .count-anim { transition: transform .22s cubic-bezier(.2,.95,.2,1); }
+  /* smooth checkbox scale animation */
+  input[type="checkbox"] { transform: translateY(1px); }
+
+/* ==== Smoke background (sutil) ==== */
+.smoke-overlay{position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.18;mix-blend-mode:screen;background:radial-gradient(1000px 600px at 20% 120%,rgba(255,255,255,.06),transparent 60%),radial-gradient(800px 500px at 80% 110%,rgba(255,255,255,.05),transparent 60%),radial-gradient(900px 700px at 50% 130%,rgba(255,255,255,.04),transparent 60%);filter:blur(10px);animation:smokeMove 18s ease-in-out infinite alternate;}
+@keyframes smokeMove{0%{transform:translate3d(0,0,0) scale(1);}50%{transform:translate3d(0,-10px,0) scale(1.02);}100%{transform:translate3d(0,-20px,0) scale(1.04);}}
+</style>
+<style>
+.app-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 28px; z-index: 9999; display:flex; gap:8px; align-items:center; padding:12px 16px; border-radius:12px; box-shadow:0 6px 18px rgba(2,6,23,.6); background:linear-gradient(90deg, rgba(255,90,38,.95), rgba(255,140,70,.95)); color:#071126; font-weight:600; }
+.app-toast.hide { opacity:0; transform: translateX(-50%) translateY(12px); pointer-events:none; transition: all .28s ease; }
+</style></head>
+<body class="bg-gradient-to-b from-churras-900 via-[#071126] to-[#031023] min-h-screen text-slate-50 antialiased">
+<div class=\"smoke-overlay\" aria-hidden=\"true\"></div>
+
+<div class="max-w-3xl mx-auto p-4">
+  <!-- Header -->
+  <header class="flex items-center gap-4 mb-4">
+    <div class="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-tr from-churras-500 to-churras-300 shadow-xl">
+      <span class="text-[#071020] font-extrabold text-xl">CC</span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-extrabold font-sans">Calchurras</h1>
+      <p class="text-sm text-slate-300">Calculadora moderna para planejar seu churrasco perfeito 🔥🥩🍻</p>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="flex gap-2 mb-4">
+    <button data-tab="calc" class="tab-btn bg-white/3 text-churras-100 px-3 py-1 rounded-xl font-semibold shadow-sm">Calculadora</button>
+    <button data-tab="donate" class="tab-btn bg-white/2 text-slate-200/90 px-3 py-1 rounded-xl font-semibold">Doação (PIX)</button>
+    <button data-tab="about" class="tab-btn bg-white/2 text-slate-200/90 px-3 py-1 rounded-xl font-semibold">Sobre</button>
+  </nav>
+
+  <!-- Calculator Section -->
+  <section id="calc" class="space-y-4">
+
+    <!-- Config -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-3">
+          <div class="bg-churras-400 p-2 rounded-full text-[#071020] font-bold">🔥</div>
+          <div>
+            <div class="text-sm font-semibold">Configuração</div>
+            <div class="text-xs text-slate-300">Informe as pessoas, duração e perfil de consumo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- People controls -->
+      <div class="grid grid-cols-3 gap-3 mt-3">
+        <!-- Counter component -->
+        <div class="bg-white/5 rounded-xl p-3 text-center">
+          <div class="text-xs text-slate-300">Homens</div>
+          <div class="flex items-center justify-center gap-2 mt-2">
+            <button class="decr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="homens">−</button>
+            <input id="homens" type="number" min="0" value="4" class="w-16 text-center bg-transparent border-none text-lg font-semibold" />
+            <button class="incr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="homens">+</button>
+          </div>
+        </div>
+
+        <div class="bg-white/5 rounded-xl p-3 text-center">
+          <div class="text-xs text-slate-300">Mulheres</div>
+          <div class="flex items-center justify-center gap-2 mt-2">
+            <button class="decr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="mulheres">−</button>
+            <input id="mulheres" type="number" min="0" value="3" class="w-16 text-center bg-transparent border-none text-lg font-semibold" />
+            <button class="incr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="mulheres">+</button>
+          </div>
+        </div>
+
+        <div class="bg-white/5 rounded-xl p-3 text-center">
+          <div class="text-xs text-slate-300">Crianças</div>
+          <div class="flex items-center justify-center gap-2 mt-2">
+            <button class="decr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="criancas">−</button>
+            <input id="criancas" type="number" min="0" value="2" class="w-16 text-center bg-transparent border-none text-lg font-semibold" />
+            <button class="incr-btn bg-white/5 p-2 rounded-md hover:bg-white/10" data-target="criancas">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Duration slider with animation -->
+      <div class="mt-4">
+        <label class="text-sm text-slate-300 font-semibold">Duração do churrasco</label>
+        <div class="flex items-center gap-3 mt-2">
+          <div id="durationLabel" class="px-3 py-2 rounded-xl text-sm font-semibold bg-white/5">2–4 horas</div>
+          <input id="durationSlider" type="range" min="2" max="6" step="2" value="4" class="w-full" />
+        </div>
+        <div class="text-xs text-slate-400 mt-2">Arraste para ajustar — animação amigável</div>
+      </div>
+
+      <!-- Consumption & vegetarian -->
+      <div class="flex items-center justify-between gap-3 mt-4">
+        <div class="w-2/3">
+          <label class="text-sm text-slate-300">Perfil de consumo</label>
+          <select id="consumo" class="w-full mt-2 rounded-lg bg-white/5 p-2">
+            <option value="baixo">Baixo</option>
+            <option value="normal" selected>Normal</option>
+            <option value="alto">Alto (festinha)</option>
+          </select>
+        </div>
+        <div class="w-1/3">
+          <label class="text-sm text-slate-300">Vegetarianos?</label>
+          <div class="mt-2 flex items-center gap-2">
+            <input id="veg" type="checkbox" class="h-5 w-5 accent-churras-400" />
+            <span class="text-sm">Sim</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vegetarian options (hidden unless veg checked) -->
+    <div id="vegOptions" class="bg-white/3 p-4 rounded-2xl shadow-lg hidden">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="bg-green-300 p-2 rounded-full text-[#08231f] font-bold">🥬</div>
+        <div>
+          <div class="text-sm font-semibold">Opções vegetarianas</div>
+          <div class="text-xs text-slate-300">Selecione os alimentos que serão servidos para vegetarianos</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="abobrinha" class="accent-churras-400">Abobrinha
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="berinjela" class="accent-churras-400">Berinjela
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="pimentao" class="accent-churras-400">Pimentão
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="cebola" class="accent-churras-400">Cebola
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="tomate" class="accent-churras-400">Tomate-cereja
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="cogumelos" class="accent-churras-400">Cogumelos
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="milho" class="accent-churras-400">Milho (espiga)
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="queijo-coalho" class="accent-churras-400">Queijo coalho
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="tofu" class="accent-churras-400">Tofu firme
+        </label>
+        <label class="check jovial flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+          <input type="checkbox" data-veg="abacaxi" class="accent-churras-400">Abacaxi
+        </label>
+      </div>
+    </div>
+
+    <!-- Meat selections -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-red-400 text-[#071020] font-bold p-2 rounded-full">🥩</div>
+        <div>
+          <div class="text-sm font-semibold">Escolha os cortes</div>
+          <div class="text-xs text-slate-300">Marque os cortes que serão servidos</div>
+        </div>
+      </div>
+
+      <!-- Bovinas -->
+      <div class="mb-3">
+        <div class="text-xs text-slate-300 font-semibold mb-2">Bovinas</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Picanha" checked class="accent-churras-400">Picanha
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Fraldinha" checked class="accent-churras-400">Fraldinha
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Contrafile" checked class="accent-churras-400">Contrafilé
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Alcatra" checked class="accent-churras-400">Alcatra
+          </label>
+
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Cupim" class="accent-churras-400">Cupim
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Costela-bovina" class="accent-churras-400">Costela bovina
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Maminha" class="accent-churras-400">Maminha
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="File-mignon" class="accent-churras-400">Filé mignon (opcional)
+          </label>
+        </div>
+      </div>
+
+    <!-- Meat selections -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-red-400 text-[#071020] font-bold p-2 rounded-full">🐷</div>
+        <div>
+          <div class="text-sm font-semibold">Escolha os cortes</div>
+          <div class="text-xs text-slate-300">Marque os cortes que serão servidos</div>
+        </div>
+      </div>
+
+      <!-- Suínas -->
+    <div class="mb-3">
+        <div class="flex items-center gap-2 mb-2 justify-center"><span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-300 text-[#071020]"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M20 8c0-1.657-1.79-3-4-3H8C5.79 5 4 6.343 4 8v3c0 2.761 3.582 5 8 5s8-2.239 8-5V8zm-6.5 2a1 1 0 110-2 1 1 0 010 2zm-3 0a1 1 0 110-2 1 1 0 010 2zM7 16l-1.5 2M17 16l1.5 2"/></svg></span><span class="text-xs text-slate-300 font-semibold">Suínas</span></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Linguiça Toscana" checked class="accent-churras-400">Linguiça Toscana
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Costelinha Suína" checked class="accent-churras-400">Costelinha Suína
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Pernil Suíno" checked class="accent-churras-400">Pernil Suíno
+          </label>
+
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Lombo Suíno" class="accent-churras-400">Lombo Suíno
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Panceta" class="accent-churras-400">Panceta
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Paleta Suína" class="accent-churras-400">Paleta Suína
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Picanha Suína" class="accent-churras-400">Picanha Suína
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Filé Mignon Suíno" class="accent-churras-400">Filé Mignon Suíno
+          </label>
+        </div>
+      </div>
+      <!-- Meat selections -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-red-400 text-[#071020] font-bold p-2 rounded-full">🐔</div>
+        <div>
+          <div class="text-sm font-semibold">Escolha os cortes</div>
+          <div class="text-xs text-slate-300">Marque os cortes que serão servidos</div>
+        </div>
+      </div>
+      <!-- Aves -->
+      <div class="mb-3">
+        <div class="flex items-center gap-2 mb-2 justify-center"><span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-300 text-[#071020]"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M22 4s-1 .5-2 .5c-.9-1-2.4-1-3.4-.1-1.3 1.1-1.5 3-.6 4.3-2 0-4-.7-5.5-2-2 3 1 5 1 5s-1.2 0-2-.6c0 2.1 1.6 3.5 3.3 3.9-.7.2-1.5.2-2.2.1.6 1.8 2.3 3 4.2 3-1.9 1.5-4.2 2.3-6.6 2.3h-.8C9 21 12 22 15.2 22 19.8 22 24 18 24 9.5c0-.2 0-.3-.1-.5.8-.6 1.3-1.4 1.3-1.4s-1 .4-2 .4z"/></svg></span><span class="text-xs text-slate-300 font-semibold">Aves</span></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Coxinha da Asa" checked class="accent-churras-400">Coxinha da Asa
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Asa Inteira" checked class="accent-churras-400">Asa Inteira
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Peito de Frango" checked class="accent-churras-400">Peito de Frango
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Sobrecoxa" checked class="accent-churras-400">Sobrecoxa
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Coração" class="accent-churras-400">Coração
+          </label>
+        </div>
+      </div>
+            <!-- Meat selections -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-red-400 text-[#071020] font-bold p-2 rounded-full">🐏</div>
+        <div>
+          <div class="text-sm font-semibold">Escolha os cortes</div>
+          <div class="text-xs text-slate-300">Marque os cortes que serão servidos</div>
+        </div>
+      </div>
+      <!-- Carneiro -->
+      <div class="mb-3">
+        <div class="text-xs text-slate-300 font-semibold mb-2">Carneiro/Cordeiro</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Costela Cordeiro" checked class="accent-churras-400">Costela Cordeiro
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Pernil Cordeiro" checked class="accent-churras-400">Pernil Cordeiro
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Paleta Cordeiro" checked class="accent-churras-400">Paleta Cordeiro
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Linguiça Cordeiro" checked class="accent-churras-400">Linguiça Cordeiro
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="Picanha Cordeiro" class="accent-churras-400">Cordeiro
+          </label>
+        </div>
+      </div>
+    <!-- Beverages -->
+    <div class="bg-white/3 p-4 rounded-2xl shadow-lg">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="bg-red-400 text-[#071020] p-2 rounded-full font-bold">🍻</div>
+        <div>
+          <div class="flex items-center justify-center gap-2"><span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-300 text-[#071020]"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M4 3h16l-2 7c-1.3 0-2.7 1-3.2 2.2L12 20l-2.8-7.8C8.7 11 7.3 10 6 10L4 3zm2 18h12v2H6z"/></svg></span><span class="text-sm font-semibold">Bebidas</span></div>
+          <div class="text-xs text-slate-300">Escolha os formatos e tipos</div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <div class="text-xs text-slate-300 font-semibold mb-2">Cerveja</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="lata350" data-ml="350" checked>Lata 350 ml
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="lata473" data-ml="473" checked>Latão 473 ml
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="garrafa600"data-ml="600" checked>Garrafa 600 ml
+          </label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <div class="text-xs text-slate-300 font-semibold mb-2">Refrigerantes/Sucos</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 place-items-center">
+          <!-- list per your provided selection -->
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="ref-lata350" data-ml="350" checked>Lata 350 ml
+          </label>
+          <label class="check flex items-center gap-2 p-2 rounded-lg bg-white/5 cursor-pointer">
+            <input type="checkbox" data-key="ref-2l" data-ml="473" checked>Garrafa 2L
+          </label>
+        </div>
+      </div>
+
+      </div>
+      </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3">
+      <button id="calcular" class="flex-1 rounded-xl py-3 font-bold text-[#071020] bg-gradient-to-r from-churras-400 to-churras-200 shadow-lg transform hover:scale-[1.01] active:scale-[0.99]">Calcular agora</button>
+      <button id="reset" class="rounded-xl py-3 px-4 border border-white/6 text-sm">Resetar</button>
+    </div>
+
+    <!-- Result -->
+    <div id="resultado" class="bg-white/4 p-4 rounded-2xl shadow-lg hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm text-slate-300">Resumo do cálculo</div>
+          <div id="resPessoas" class="text-lg font-semibold mt-1">—</div>
+        </div>
+        <div class="text-sm text-slate-400">Dica: unidades arredondadas para cima</div>
+      </div>
+
+      <div class="mt-4 grid gap-3">
+        <div class="p-3 bg-white/5 rounded-lg">
+          <div class="flex justify-between text-sm text-slate-300"><div>Carne total</div><div id="resCarne">—</div></div>
+          <div id="resCortes" class="mt-2 text-sm text-slate-200"></div>
+        </div>
+
+        <div class="p-3 bg-white/5 rounded-lg">
+          <div class="flex justify-between text-sm text-slate-300"><div>Carvão estimado</div><div id="resCarvao">—</div></div>
+        </div>
+
+        <div class="p-3 bg-white/5 rounded-lg">
+          <div class="flex justify-between text-sm text-slate-300"><div>Cerveja (total L)</div><div id="resCerveja">—</div></div>
+          <div id="resBeerDetails" class="mt-2 text-sm text-slate-200"></div>
+        </div>
+
+        <div class="p-3 bg-white/5 rounded-lg">
+          <div class="flex justify-between text-sm text-slate-300"><div>Refrigerante (total L)</div><div id="resRefri">—</div></div>
+          <div id="resRefriDetails" class="mt-2 text-sm text-slate-200"></div>
+        </div>
+        </div>
+
+        <div id="resOthers" class="text-sm text-slate-200"></div>
+      </div>
+
+  </section>
+
+  <!-- Donate -->
+  <section id="donate" class="hidden bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-start gap-4">
+      <div class="text-2xl bg-pink-300 rounded-full p-2 text-[#071020] font-bold">💝</div>
+      <div>
+        <div class="text-sm font-semibold">Doar via PIX</div>
+        <div class="text-xs text-slate-300 mt-1">Apoie o desenvolvimento do Calchurras — qualquer contribuição mantém o projeto vivo 🔥</div>
+
+        <div class="mt-3">
+          <div class="text-xs text-slate-300 font-semibold mb-2">Chave PIX</div>
+          <div class="flex gap-2 items-center">
+            <input id="pixKey" class="flex-1 p-2 rounded-lg bg-white/5 text-[#e8f5ff]" value="jonathandemarchi@gmail.com" readonly />
+            <button id="copyPix" class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/8">Copiar</button>
+          </div>
+          <div class="text-xs text-slate-400 mt-2">Nome: Jonathan Rodrigues Demarchi (Banco do Brasil)</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about" class="hidden bg-white/3 p-4 rounded-2xl shadow-lg">
+    <div class="flex items-start gap-4">
+      <div class="text-2xl bg-sky-300 rounded-full p-2 text-[#071020] font-bold">ℹ️</div>
+      <div>
+        <h2 class="font-semibold text-lg">Sobre o Calchurras</h2>
+        <p class="text-sm text-slate-300 mt-2">
+          O aplicativo <strong>Calchurras</strong> foi criado e desenvolvido por <strong>Jonathan Rodrigues Demarchi</strong>, um
+          admirador por churrasco e aprendiz de programação. A ideia nasceu da vontade de tornar o planejamento do churrasco simples,
+          rápido e divertido — para que qualquer pessoa consiga calcular carnes, bebidas e acompanhamentos sem stress.
+        </p>
+
+        <p class="text-sm text-slate-300 mt-2">
+          Aqui você encontra opções completas para carnívoros e vegetarianos, escolhas de bebidas variadas e uma interface pensada
+          para celular. Use, ajuste e compartilhe com a galera — e, se curtir, dá uma força na aba de doação :)
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  
+<footer class="mt-10 text-center text-xs text-slate-300 py-6">
+  <div class="flex items-center justify-center gap-2">
+    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/10 text-slate-200">
+      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true">
+        <path d="M12 2l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/>
+      </svg>
+    </span>
+    <span class="tracking-wide">Demarchi Technology ©</span>
+  </div>
+</footer>
+
+</div>
+
+<!-- JS Logic -->
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('bg-white/3','text-churras-100'));
+      btn.classList.add('bg-white/3','text-churras-100');
+      const tab = btn.dataset.tab;
+      document.getElementById('calc').classList.toggle('hidden', tab !== 'calc');
+      document.getElementById('donate').classList.toggle('hidden', tab !== 'donate');
+      document.getElementById('about').classList.toggle('hidden', tab !== 'about');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+
+  // Count buttons behavior with subtle animation
+  document.querySelectorAll('.incr-btn, .decr-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const t = e.currentTarget.dataset.target;
+      const input = document.getElementById(t);
+      const old = Number(input.value) || 0;
+      if (btn.classList.contains('incr-btn')) input.value = old + 1;
+      else input.value = Math.max(0, old - 1);
+      // small transform
+      input.classList.add('count-anim');
+      input.style.transform = 'scale(1.06)';
+      setTimeout(()=>{ input.style.transform = 'scale(1)'; }, 160);
+    });
+  });
+
+  // Duration slider label & animation
+  const durationSlider = document.getElementById('durationSlider');
+  const durationLabel = document.getElementById('durationLabel');
+  function updateDurationLabel() {
+    const v = Number(durationSlider.value);
+    if (v <= 2) durationLabel.textContent = 'Até 2 horas';
+    else if (v >= 6) durationLabel.textContent = 'Mais de 4 horas';
+    else durationLabel.textContent = '2–4 horas';
+    // pulse effect
+    durationLabel.classList.add('pulse-glow');
+    durationLabel.style.boxShadow = '0 6px 18px rgba(255,90,38,0.18)';
+    setTimeout(()=> durationLabel.style.boxShadow = 'none', 420);
+  }
+  durationSlider.addEventListener('input', updateDurationLabel);
+  updateDurationLabel();
+
+  // Veg options toggle
+  const vegCheckbox = document.getElementById('veg');
+  const vegOptions = document.getElementById('vegOptions');
+  vegCheckbox.addEventListener('change', ()=> {
+    if (vegCheckbox.checked) {
+      vegOptions.classList.remove('hidden');
+      vegOptions.animate([{opacity:0, transform:'translateY(-6px)'},{opacity:1, transform:'translateY(0)'}], {duration:220, easing:'cubic-bezier(.2,.95,.2,1)'});
+    } else {
+      vegOptions.classList.add('hidden');
+    }
+  });
+
+  // Copy PIX
+  document.getElementById('copyPix').addEventListener('click', async ()=>{
+    const key = document.getElementById('pixKey').value;
+    try {
+      await navigator.clipboard.writeText(key);
+      const btn = document.getElementById('copyPix');
+      const old = btn.textContent;
+      btn.textContent = 'Copiado!';
+      setTimeout(()=> btn.textContent = old, 1400);
+    } catch(e) {
+      alert('Não foi possível copiar automaticamente. Selecione e copie manualmente: ' + key);
+    }
+  });
+
+  // helper functions
+  function formatKg(x){
+    if (x >= 1) return x.toFixed(2) + ' kg';
+    return Math.round(x*1000) + ' g';
+  }
+  function formatL(x){
+    return x.toFixed(2) + ' L';
+  }
+
+  // get selected items by data-key
+  // ---------- MADE ROBUST: accepts container selectors or direct input selectors ----------
+  function selectedKeys(selector) {
+    // if selector looks like it already points to inputs (contains 'input' or ends with '[data-key]'), use it directly
+    let sel = selector;
+    const looksLikeInputSelector = /(^|\s|,)(input|\[type=|\.check|\[data-key)/i.test(selector);
+    if (!looksLikeInputSelector) {
+      sel = selector + ' input[type="checkbox"]:checked';
+    } else {
+      // if it looks like input selector but not yet filtered for :checked, try to ensure checked only
+      if (!/:\s*checked/.test(selector)) {
+        sel = selector + ':checked';
+      }
+    }
+
+    try {
+      return Array.from(document.querySelectorAll(sel)).map(i=>({
+        key: i.dataset ? i.dataset.key || null : null,
+        ml: i.dataset && i.dataset.ml ? Number(i.dataset.ml) : null,
+        _el: i // attach element in case caller needs it
+      }));
+    } catch(err) {
+      console.error('selectedKeys selector error for:', selector, '->', sel, err);
+      return [];
+    }
+  }
+
+  // Calculation logic (same rules you approved)
+  document.getElementById('calcular').addEventListener('click', ()=>{
+    try {
+      console.log('Calcular iniciado — coletando valores...');
+      const homens = Number(document.getElementById('homens').value) || 0;
+      const mulheres = Number(document.getElementById('mulheres').value) || 0;
+      const criancas = Number(document.getElementById('criancas').value) || 0;
+      const dur = Number(durationSlider.value) || 4; // 2,4,6 mapping
+      const consumo = document.getElementById('consumo').value;
+      const veg = vegCheckbox.checked;
+
+      const adultos = homens + mulheres;
+      const totalPessoas = adultos + criancas;
+      if (totalPessoas === 0) { alert('Informe pelo menos uma pessoa.'); return; }
+
+      // Carne por adulto based on duration: <=2h 0.3kg ; 2-4h 0.4kg ; >4h 0.5kg
+      let baseKg = 0.4;
+      if (dur <= 2) baseKg = 0.30;
+      else if (dur >= 6) baseKg = 0.50;
+      else baseKg = 0.40;
+
+      // consumption factor
+      let factor = 1.0;
+      if (consumo === 'baixo') factor = 0.85;
+      if (consumo === 'alto') factor = 1.25;
+
+      const childFactor = 0.5;
+      const totalCarneKg = ((adultos * baseKg) + (criancas * baseKg * childFactor)) * factor;
+
+      // selected cuts across categories
+      const cortes = [].concat(
+        selectedKeys('[data-key][data-key^="picanha"], #').filter(()=>false) // no-op, preserve for linter
+      );
+
+      // gather all checkboxes with data-key (meat only)
+      const allCuts = Array.from(document.querySelectorAll('#calc input[data-key]')).filter(i => i.checked && i.dataset.key && !i.dataset.key.startsWith('lata') && !i.dataset.key.startsWith('garrafa') && !i.dataset.key.startsWith('ref-') && !['agua','agua-gas','gin','whisky','suco','cha'].includes(i.dataset.key));
+
+      // simpler: collect from the meat container (this returns dataset.key strings)
+      const meatSelected = Array.from(document.querySelectorAll('#calc input[data-key]')).filter(i=>{
+        const k = i.dataset.key;
+        return i.checked && !k.startsWith('lata') && !k.startsWith('garrafa') && !k.startsWith('ref-') && !['agua','agua-gas','gin','whisky','suco','cha'].includes(k);
+      }).map(i=>i.dataset.key);
+
+      // If meatSelected is empty, try a fallback with our robust selectedKeys (covers weird selector cases)
+      let finalMeat = meatSelected;
+      if (!finalMeat || finalMeat.length === 0) {
+        const sk = selectedKeys('#calc input[data-key]');
+        finalMeat = sk.filter(o=> o.key && !o.key.startsWith('lata') && !o.key.startsWith('garrafa') && !o.key.startsWith('ref-') && !['agua','agua-gas','gin','whisky','suco','cha'].includes(o.key)).map(o=>o.key);
+      }
+
+      // distribution
+      const distr = {};
+      if (finalMeat.length === 0) {
+        distr['misto'] = totalCarneKg;
+      } else {
+        const per = totalCarneKg / finalMeat.length;
+        finalMeat.forEach(k => distr[k] = per);
+      }
+
+      // carvão: 1.3 kg per kg meat
+      const carvaoKg = totalCarneKg * 1.3;
+
+      // Drinks
+      let cervejaAdultL = dur <= 2 ? 0.8 : (dur >= 6 ? 1.6 : 1.2);
+      let refriPerPersonL = dur <= 2 ? 0.5 : (dur >= 6 ? 1.2 : 0.8);
+      cervejaAdultL *= factor;
+      refriPerPersonL *= factor;
+
+      const totalCervejaL = adultos * cervejaAdultL;
+      const totalRefriL = totalPessoas * refriPerPersonL;
+
+      // Beer formats breakdown
+      const beerInputs = Array.from(document.querySelectorAll('#calc input[data-key]')).filter(i=>{
+        return i.checked && ['lata350','lata473','garrafa600','litro'].includes(i.dataset.key);
+      }).map(i=>({key:i.dataset.key, ml: i.dataset.ml ? Number(i.dataset.ml) : (i.dataset.key==='litro'?1000:350)}));
+
+      const beerUnits = [];
+      if (beerInputs.length === 0) {
+        // default to lata 350
+        const units = Math.ceil((totalCervejaL*1000)/350);
+        beerUnits.push({label:'Lata 350 ml', units, liters: units*0.35});
+      } else {
+        const shareBeerL = totalCervejaL / beerInputs.length;
+        beerInputs.forEach(f=>{
+          const units = Math.ceil((shareBeerL*1000)/f.ml);
+          beerUnits.push({label: f.key === 'lata350' ? 'Lata 350 ml' : f.key === 'lata473' ? 'Lata 473 ml' : f.key === 'garrafa600' ? 'Garrafa 600 ml' : 'Garrafa 1 L', units, liters: units * (f.ml/1000)});
+        });
+      }
+
+      // Refri breakdown
+      const refInputs = Array.from(document.querySelectorAll('#calc input[data-key]')).filter(i=>{
+        return i.checked && ['ref-lata350','ref-2l','suco'].includes(i.dataset.key);
+      }).map(i=>({key:i.dataset.key, ml: i.dataset.ml ? Number(i.dataset.ml) : (i.dataset.key==='ref-2l'?2000:350)}));
+
+      const refUnits = [];
+      if (refInputs.length === 0) {
+        const units = Math.ceil((totalRefriL*1000)/2000);
+        refUnits.push({label:'Garrafa 2 L', units, liters: units*2});
+      } else {
+        const shareRefL = totalRefriL / refInputs.length;
+        refInputs.forEach(f=>{
+          const units = Math.ceil((shareRefL*1000)/f.ml);
+          refUnits.push({label: f.key === 'ref-lata350' ? 'Lata 350 ml' : f.key === 'ref-2l' ? 'Garrafa 2 L' : 'Suco', units, liters: units * (f.ml/1000)});
+        });
+      }
+
+      // Other drinks (water, gin, whisky, tea) — estimate simple units
+      const others = {};
+      const otherKeys = ['agua','agua-gas','gin','whisky','suco','cha'];
+      otherKeys.forEach(k=>{
+        const el = document.querySelector('#calc input[data-key="'+k+'"]');
+        if (el && el.checked) {
+          // simple heuristics
+          if (k === 'agua' || k === 'agua-gas') {
+            others[k] = {units: Math.ceil((totalPessoas * 0.5) / 1.5), desc: 'garrafas 1.5L (estimativa)'}; // rough
+          } else if (k === 'gin' || k === 'whisky') {
+            others[k] = {units: Math.ceil((adultos * 0.15)), desc: 'garrafas (estimativa)'}; // very rough
+          } else if (k === 'cha' || k === 'suco') {
+            others[k] = {units: Math.ceil((totalPessoas * 0.3) / 2), desc: 'garrafas 2L (estimativa)'};
+          }
+        }
+      });
+
+      // Update UI
+      document.getElementById('resultado').classList.remove('hidden');
+      document.getElementById('resPessoas').textContent = `${totalPessoas} pessoas (adultos: ${adultos}, crianças: ${criancas})`;
+      document.getElementById('resCarne').textContent = formatKg(totalCarneKg);
+
+      // cuts details
+      const resCortes = document.getElementById('resCortes'); resCortes.innerHTML = '';
+      Object.keys(distr).forEach(k=>{
+        const el = document.createElement('div');
+        el.textContent = `${k.replace(/-/g,' ')}: ${formatKg(distr[k])}`;
+        el.className = 'mt-1';
+        resCortes.appendChild(el);
+      });
+
+      document.getElementById('resCarvao').textContent = carvaoKg.toFixed(2) + ' kg';
+
+      document.getElementById('resCerveja').textContent = formatL(totalCervejaL);
+      // beer details
+      const beerDet = document.getElementById('resBeerDetails'); beerDet.innerHTML = '';
+      beerUnits.forEach(b=>{
+        const d = document.createElement('div');
+        d.textContent = `${b.label}: ${b.units} unidade(s) (~${b.liters.toFixed(2)} L)`;
+        beerDet.appendChild(d);
+      });
+
+      document.getElementById('resRefri').textContent = formatL(totalRefriL);
+      const refDet = document.getElementById('resRefriDetails'); refDet.innerHTML = '';
+      refUnits.forEach(r=>{
+        const d = document.createElement('div');
+        d.textContent = `${r.label}: ${r.units} unidade(s) (~${r.liters.toFixed(2)} L)`;
+        refDet.appendChild(d);
+      });
+
+      // others
+      const resOthers = document.getElementById('resOthers'); resOthers.innerHTML = '';
+      Object.keys(others).forEach(k=>{
+        const o = others[k];
+        const d = document.createElement('div');
+        d.textContent = `${k.replace('-',' ')}: ${o.units} ${o.desc}`;
+        resOthers.appendChild(d);
+      });
+
+      // If vegetarian, show selected veg options summary
+      if (veg) {
+        const vegSelected = Array.from(document.querySelectorAll('#vegOptions input[type="checkbox"]:checked')).map(i=>i.getAttribute('data-veg'));
+        if (vegSelected.length) {
+          const vdiv = document.createElement('div');
+          vdiv.className = 'mt-3 p-3 bg-white/5 rounded-lg text-sm';
+          vdiv.textContent = 'Vegetarianos — itens selecionados: ' + vegSelected.join(', ');
+          resOthers.appendChild(vdiv);
+        }
+      }
+
+      // subtle result reveal animation
+      document.getElementById('resultado').animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:220, easing:'cubic-bezier(.2,.95,.2,1)'});
+      // scroll to result
+      setTimeout(()=> document.getElementById('resultado').scrollIntoView({behavior:'smooth'}), 80);
+
+      console.log('Calcular finalizado — UI atualizada.');
+    } catch (err) {
+      console.error('Erro durante cálculo:', err);
+      alert('Ocorreu um erro ao calcular. Abra o console (F12) e verifique. Mensagem: ' + (err && err.message ? err.message : String(err)));
+    }
+  });
+
+  // Reset
+  document.getElementById('reset').addEventListener('click', ()=>{
+    document.getElementById('homens').value = 0;
+    document.getElementById('mulheres').value = 0;
+    document.getElementById('criancas').value = 0;
+    durationSlider.value = 4; updateDurationLabel();
+    document.getElementById('consumo').value = 'normal';
+    document.getElementById('veg').checked = false; vegOptions.classList.add('hidden');
+
+    // uncheck all inputs then set sensible defaults
+    document.querySelectorAll('#calc input[type="checkbox"]').forEach(cb=>cb.checked = false);
+    ['picanha','fraldinha','contrafile','alcatra','linguica-toscana','costelinha-porco','coxa-asa','coracao','lata350','lata473','ref-lata350','ref-2l'].forEach(k=>{
+      const el = document.querySelector('#calc input[data-key="'+k+'"]');
+      if (el) el.checked = true;
+    });
+
+    document.getElementById('resultado').classList.add('hidden');
+  });
+
+  // init: set defaults (some checkboxes were pre-checked in markup)
+  // attach scale pop on click for check labels
+  document.querySelectorAll('.check').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      el.animate([{transform:'scale(0.98)'},{transform:'scale(1)'}], {duration:160, easing:'cubic-bezier(.2,.95,.2,1)'});
+    });
+  });
+
+  // Ensure the PIX field selects on focus
+  document.getElementById('pixKey').addEventListener('focus', (e)=> e.target.select());
+
+  // Accessibility: allow keyboard arrow changes on number inputs
+  ['homens','mulheres','criancas'].forEach(id=>{
+    const input = document.getElementById(id);
+    input.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowUp') { e.preventDefault(); input.value = Number(input.value||0)+1; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); input.value = Math.max(0, Number(input.value||0)-1); }
+    });
+  });
+
+</script>
+
+<!-- PWA + Notifications: functions, push scaffold and Service Worker registration (added by assistant) -->
+<script>
+/* In-app toast (visual, local) */
+function showInAppToast(message, timeout = 4500) {
+  let toast = document.createElement('div');
+  toast.className = 'app-toast';
+  toast.innerText = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.remove('hide'));
+  setTimeout(() => {
+    toast.classList.add('hide');
+    setTimeout(() => toast.remove(), 400);
+  }, timeout);
+}
+
+/* System Notification wrapper (Notification API) */
+async function showSystemNotification(title, options = {}) {
+  if (!('Notification' in window)) {
+    showInAppToast(title);
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg && reg.showNotification) reg.showNotification(title, options);
+      else new Notification(title, options);
+    });
+  } else if (Notification.permission !== 'denied') {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.showNotification) reg.showNotification(title, options);
+        else new Notification(title, options);
+      });
+    } else {
+      showInAppToast(title);
+    }
+  } else {
+    showInAppToast(title);
+  }
+}
+
+/* Small helper to show both */
+function notifyCalculationDone(text) {
+  try { showInAppToast('✅ ' + text); } catch(e){}
+  try { showSystemNotification('Calchurras', { body: text, vibrate: [100,50,100] }); } catch(e){}
+}
+
+/* Push notification scaffold (client).
+   Note: Real push requires a server. This is client scaffold.
+*/
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showInAppToast('Push não suportado neste navegador');
+    return null;
+  }
+
+  // Replace with your VAPID public key (Base64 URL-safe)
+  const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY_HERE';
+  if (VAPID_PUBLIC_KEY === 'YOUR_PUBLIC_VAPID_KEY_HERE') {
+    showInAppToast('Push: chave VAPID ausente. Coloque sua chave pública no código.');
+    return null;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    // Send subscription to your server to store and send push later
+    await sendSubscriptionToServer(sub);
+    showInAppToast('✅ Inscrito para push com sucesso');
+    return sub;
+  } catch (err) {
+    console.error('Erro ao inscrever para push:', err);
+    showInAppToast('Falha ao inscrever para push');
+    return null;
+  }
+}
+
+async function sendSubscriptionToServer(subscription) {
+  try {
+    await fetch('/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscription)
+    });
+  } catch (err) {
+    console.warn('Falha ao enviar subscription para servidor (endpoint /subscribe não configurado).', err);
+  }
+}
+
+/* Expose globally */
+window.calchurrasNotify = {
+  toast: showInAppToast,
+  system: showSystemNotification,
+  notifyDone: notifyCalculationDone,
+  subscribePush: subscribeToPush
+};
+
+/* Register service worker (expects service-worker.js in same folder) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+      .catch(err => console.warn('⚠️ Falha ao registrar Service Worker:', err));
+  });
+}
+</script>
+<!-- End PWA scripts -->
+
+</body>
+</html>
